@@ -9,12 +9,12 @@ def get_dvd_mount_point():
 	return result.split(':')[-1].strip()
 
 def extract_dvd_metadata(info):
-	cmd = ['mediainfo','--Output=XML','-f',info['mnt_point'],'2>&1']
+	cmd = ['mediainfo','--Output=XML','-f','language=raw',info['mnt_point'],'2>&1']
 	with open(info['basepath']+'_dvd.metadata.xml', "w") as file:
 		subprocess.call(cmd,stdout=file)
 
 def extract_iso_metadata(info)
-	cmd = ['mediainfo','--Output=XML','-f',info['iso_path'],'2>&1']
+	cmd = ['mediainfo','--Output=XML','-f','language=raw',info['iso_path'],'2>&1']
 	with open(info['basepath']+'_iso.metadata.xml', "w") as file:
 		subprocess.call(cmd,stdout=file)
 
