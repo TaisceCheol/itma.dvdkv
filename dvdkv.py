@@ -14,13 +14,14 @@ def get_dvd_mount_point():
 
 def extract_dvd_metadata():
 	global info
-	cmd = ['mediainfo','--Output=XML','-f',info['mnt_point']+'/VIDEO_TS','2>&1']
+	cmd = ['mediainfo','--Output=XML','-f','--Language=raw',info['mnt_point'],'2>&1']
 	with open(info['basepath']+'_dvd.metadata.xml', "w") as file:
 		subprocess.call(cmd,stdout=file)
 
 def extract_iso_metadata():
 	global info
-	cmd = ['mediainfo','--Output=XML','-f',info['iso_path'],'2>&1']
+	cmd = ['mediainfo','--Output=XML','-f','--Language=raw',info['iso_path'],'2>&1']
+
 	with open(info['basepath']+'_iso.metadata.xml', "w") as file:
 		subprocess.call(cmd,stdout=file)
 
@@ -53,8 +54,8 @@ def create_mkv():
 def inquisition(writedir):
 	global info
 	info = {}
-	# info['title'] = click.prompt(click.style("Please enter DVD title",fg='green'))
-	# info['date'] = click.prompt(click.style("Please enter date",fg='green'))
+	info['title'] = click.prompt(click.style("Please enter DVD title",fg='green'))
+	info['date'] = click.prompt(click.style("Please enter date",fg='green'))
 	info['refno'] = click.prompt(click.style("Please enter REFNO",fg='green'))
 	info['objid'] = info['refno'].replace('-','').lower()
 	info['writedir'] = writedir
