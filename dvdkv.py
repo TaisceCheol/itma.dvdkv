@@ -175,7 +175,7 @@ def inquisition(writedir):
 def run(writedir,rescue):
 	inquisition(writedir)
 	processes = [create_structure,write_mods,extract_dvd_metadata,create_iso,extract_iso_metadata,create_dvd_file_list,create_mkv,create_mp4]
-	with click.progressbar(processes[-2:]) as bar:
+	with click.progressbar(processes) as bar:
 		for proc in bar:
 			proc()
 
