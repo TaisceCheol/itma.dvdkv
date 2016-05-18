@@ -38,32 +38,42 @@ def create_iso():
 	cmd = ['diskutil','unmountDisk','/dev/disk2']
 	subprocess.call(cmd)
 	info['iso_path'] = info['basepath'] +'.iso'
-	cmd = ['dd','if=/dev/disk2','of=%s'%info['iso_path']]
+	cmd = ['ddrescue','-b2048','-n',info['iso_path'],info['basepath']+'.ddrescue.log']
 	subprocess.call(cmd)
 
 def create_dvd_file_list():
+	'''
+	requires lsdvd and dvd2concat
+	lsdvd: https://sourceforge.net/projects/lsdvd/files/lsdvd/lsdvd-0.17.tar.gz/
+	cd ~/downloads
+	tar -xf lsdvd-0.17.tar.gz
+	cd lsdvd-0.17
+	./configure
+	make
+	sudo make install
+	dvd2concat is part of ffmepg/tools
+	'''
 	global info
-	info['filelist'] = info['basepath']+'.filelist.txt'
-	#mount iso
-	cmd = ["hdiutil","mount",info['iso_path']]
+	info['filelist'] = info['basepath']+'.filelist.concat'
+	# mount iso
+	cmd = ['hdiutil','mount',info['iso_path']]
 	iso_mnt_dir = re.search(ur"(?P<path>/Volumes/.*)",subprocess.check_output(cmd)).group('path')
-	files = glob.glob(iso_mnt_dir + "/VIDEO_TS/VTS*.VOB")
-	with open(info['filelist'],'w') as f:
-		f.write("\n".join(["file '%s'" % x for x in files]))
+	cmd = ['dvd2concat',iso_mnt_dir]
+	with open(info[filelist],'w') as f:
+		subprocess.cmd(cmd,stdout=f)
+	# clean up
+	cmd = ['hdiutil','eject',info['iso_path']]
+	subprocess.call(cmd)
 
 def create_mkv():
 	global info
 	dvd_metadata = etree.parse(info['basepath']+'.dvd.xml')
 	aspect_ratio = dvd_metadata.xpath('/Mediainfo/File/track[@type="Video"]/Display_aspect_ratio/text()')[0]
 	cmd = ['ffmpeg',
-	'-f','concat',
 	'-safe','0',
-	'-probesize','2G',
-	'-analyzeduration','2G',
-	'-fflags','+genpts',
+	'-protocol_whitelist','subfile,file,crypto',
+	'-f','concat',
 	'-i',info['filelist'],
-	'-map','0:1',
-	'-map','0:2',
 	'-aspect',aspect_ratio,
 	'-c:v','ffv1',
 	'-c:a','copy','-ac','2',
@@ -99,6 +109,7 @@ def inquisition(writedir):
 def run(writedir):
 	inquisition(writedir)
 	create_structure()
+	extract_dvd_metadata()
 	create_iso()
 	extract_iso_metadata()
 	create_dvd_file_list()
