@@ -18,16 +18,19 @@ def get_dvd_mount_point():
 def extract_dvd_metadata():
 	global info
 	cmd = ['mediainfo','--Output=XML','-f','--Language=raw',info['mnt_point'],'2>&1']
-	info['dvd_metadata_path'] = os.path.join(info['basedir'],'metadata',info['basepath'] +'.dvd.xml')
+	info['dvd_metadata_path'] = os.path.join(info['basedir'],'metadata',info['objid']+'dvd.xml')
 	with open(info['dvd_metadata_path'], "w") as file:
+		subprocess.call(cmd,stdout=file)
+	cmd = ['openssl','md5',info['mnt_point']]
+	with open("os.path.join(info['basedir'],'metadata',info['objid']+'dvd.md5')",'w') as f:
 		subprocess.call(cmd,stdout=file)
 
 def extract_iso_metadata():
 	global info
 	cmd = ['mediainfo','--Output=XML','-f','--Language=raw',info['iso_path'],'2>&1']
-	info['iso_metadata_path'] = os.path.join(info['basedir'],'metadata',info['basepath'] +'.iso.xml')
-	with open(info['iso_metadata_path'], "w") as file:
-		subprocess.call(cmd,stdout=file)
+	info['iso_metadata_path'] = os.path.join(info['basedir'],'metadata',info['objid']+'iso.xml')
+	with open(info['iso_metadata_path'], "w") as f:
+		subprocess.call(cmd,stdout=f)
 
 def create_structure():
 	global info
@@ -48,12 +51,16 @@ def create_iso(rescue=False):
 	# first unmount disk
 	cmd = ['diskutil','unmountDisk','/dev/disk2']
 	subprocess.call(cmd)
-	info['iso_path'] = os.path.join(info['basedir'],'iso',info['basepath'] +'.iso')
+	info['iso_path'] = os.path.join(info['basedir'],'iso',info['objid']+'.iso')
 	if rescue == True:
 		cmd = ['ddrescue','-b2048','-u','-n',info['iso_path'],os.path.join(info['basedir'],'metadata',info['basepath']+'.ddrescue.log')]
 	else:
 		cmd = ['dd','if=/dev/disk2','of=%s'%info['iso_path']]
 	subprocess.call(cmd)
+	#checksum
+	cmd = ['openssl','md5',info['isopath']]
+	with open("info['isopath']+'.md5'" ,'w') as f:
+		subprocess.call(cmd,stdout=f)
 
 def create_dvd_file_list():
 	'''requires lsdvd and dvd2concat
@@ -91,21 +98,25 @@ def create_mkv():
 		'-c:a','copy','-ac','2',
 		'-f','matroska',
 		'-y',
-		os.path.join(info['basedir'],'mkv',info['basepath'] + '.mkv')
+		os.path.join(info['basedir'],'mkv',info['objid'] + '.mkv')
 	]
 	subprocess.call(cmd)
-
+	cmd = ['openssl','md5']
+	with open("os.path.join(info['basedir'],'mkv',info['objid'] + '.mkv'),os.path.join(info['basedir'],'mkv',info['objid'] + '.mkv.md5')","w") as f:
+		subprocess.call(cmd,stdout=f)
 def create_mp4():
 	global info
 	cmd = ['ffmpeg',
-		'-i',os.path.join(info['basedir'],'mkv',info['basepath'] + '.mkv'),
+		'-i',os.path.join(info['basedir'],'mkv',info['objid'] + '.mkv'),
 		'-c:v','libx264',
 		'-pix_fmt','yuv420p',
 		'-c:a','copy','-ac','2',
 		'-f','mp4',
-		os.path.join(info['basedir'],'mp4',info['basepath'] + '.mp4')
+		os.path.join(info['basedir'],'mp4',info['objid'] + '.mp4')
 	]
 	subprocess.call(cmd)
+	with open("os.path.join(info['basedir'],'mp4',info['objid'] + '.mp4'),os.path.join(info['basedir'],'mp4',info['objid'] + '.mp4.md5')","w") as f:
+		subprocess.call(cmd,stdout=f)
 
 def process_date(datestr):
 	date_obj = ddparse.DateDataParser().get_date_data(datestr)
@@ -171,5 +182,6 @@ def run(writedir,rescue):
 	create_dvd_file_list()
 	create_mkv()
 	create_mp4()
+
 if __name__ == '__main__':
 	run()
