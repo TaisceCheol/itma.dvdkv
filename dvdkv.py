@@ -8,6 +8,8 @@ from datetime import date
 from dateparser import date as ddparse
 
 def get_dvd_mount_point():
+	cmd = ['diskutil','mount','/dev/disk2']
+	subprocess.check_output(cmd)
 	cmd = ['diskutil','info','/dev/disk2']
 	diskutil = subprocess.Popen(cmd,stdout=subprocess.PIPE)
 	cmd = ['grep','Mount\ Point']
@@ -17,18 +19,18 @@ def get_dvd_mount_point():
 
 def extract_dvd_metadata():
 	global info
-	cmd = ['mediainfo','--Output=XML','-f','--Language=raw',info['mnt_point'],'2>&1']
-	info['dvd_metadata_path'] = os.path.join(info['basedir'],'metadata',info['objid']+'dvd.xml')
+	cmd = ['mediainfo','--Output=XML','-f','--Language=Raw',info['mnt_point'],'2>&1']
+	info['dvd_metadata_path'] = os.path.join(info['basedir'],'metadata',info['objid']+'.dvd.xml')
 	with open(info['dvd_metadata_path'], "w") as file:
 		subprocess.call(cmd,stdout=file)
 	cmd = ['openssl','md5',info['mnt_point']]
-	with open("os.path.join(info['basedir'],'metadata',info['objid']+'dvd.md5')",'w') as f:
-		subprocess.call(cmd,stdout=file)
+	with open(os.path.join(info['basedir'],'metadata',info['objid']+'dvd.md5'),'w') as f:
+		subprocess.call(cmd,stdout=f)
 
 def extract_iso_metadata():
 	global info
-	cmd = ['mediainfo','--Output=XML','-f','--Language=raw',info['iso_path'],'2>&1']
-	info['iso_metadata_path'] = os.path.join(info['basedir'],'metadata',info['objid']+'iso.xml')
+	cmd = ['mediainfo','--Output=XML','-f','--Language=Raw',info['iso_path'],'2>&1']
+	info['iso_metadata_path'] = os.path.join(info['basedir'],'metadata',info['objid']+'.iso.xml')
 	with open(info['iso_metadata_path'], "w") as f:
 		subprocess.call(cmd,stdout=f)
 
@@ -50,7 +52,7 @@ def create_iso(rescue=False):
 	global info
 	# first unmount disk
 	cmd = ['diskutil','unmountDisk','/dev/disk2']
-	subprocess.call(cmd)
+	subprocess.check_output(cmd)
 	info['iso_path'] = os.path.join(info['basedir'],'iso',info['objid']+'.iso')
 	if rescue == True:
 		cmd = ['ddrescue','-b2048','-u','-n',info['iso_path'],os.path.join(info['basedir'],'metadata',info['basepath']+'.ddrescue.log')]
@@ -58,8 +60,8 @@ def create_iso(rescue=False):
 		cmd = ['dd','if=/dev/disk2','of=%s'%info['iso_path']]
 	subprocess.call(cmd)
 	#checksum
-	cmd = ['openssl','md5',info['isopath']]
-	with open("info['isopath']+'.md5'" ,'w') as f:
+	cmd = ['openssl','md5',info['iso_path']]
+	with open(info['iso_path']+'.md5' ,'w') as f:
 		subprocess.call(cmd,stdout=f)
 
 def create_dvd_file_list():
@@ -78,31 +80,28 @@ def create_dvd_file_list():
 	cmd = ['hdiutil','mount',info['iso_path']]
 	iso_mnt_dir = re.search(ur"(?P<path>/Volumes/.*)",subprocess.check_output(cmd)).group('path')
 	cmd = ['dvd2concat',iso_mnt_dir]
-	with open(info[filelist],'w') as f:
-		subprocess.cmd(cmd,stdout=f)
+	with open(info['filelist'],'w') as f:
+		subprocess.call(cmd,stdout=f)
 	# clean up
 	cmd = ['hdiutil','eject',info['iso_path']]
 	subprocess.call(cmd)
 
 def create_mkv():
 	global info
-	dvd_metadata = etree.parse(info['dvd_metadata_path'])
-	aspect_ratio = dvd_metadata.xpath('/Mediainfo/File/track[@type="Video"]/Display_aspect_ratio/text()')[0]
+	info['filelist'] = info['basepath']+'.filelist.concat'
 	cmd = ['ffmpeg',
 		'-safe','0',
-		'-protocol_whitelist','subfile,file,crypto',
-		'-f','concat',
+		'-protocol_whitelist','subfile,file,crypto,concat', '-f','concat',
 		'-i',info['filelist'],
-		'-aspect',aspect_ratio,
-		'-c:v','ffv1',
+		'-c:v','copy',
 		'-c:a','copy','-ac','2',
 		'-f','matroska',
 		'-y',
 		os.path.join(info['basedir'],'mkv',info['objid'] + '.mkv')
 	]
 	subprocess.call(cmd)
-	cmd = ['openssl','md5']
-	with open("os.path.join(info['basedir'],'mkv',info['objid'] + '.mkv'),os.path.join(info['basedir'],'mkv',info['objid'] + '.mkv.md5')","w") as f:
+	cmd = ['openssl','md5',os.path.join(info['basedir'],'mkv',info['objid'] + '.mkv')]
+	with open(os.path.join(info['basedir'],'mkv',info['objid'] + '.mkv.md5'),"w") as f:
 		subprocess.call(cmd,stdout=f)
 def create_mp4():
 	global info
@@ -115,7 +114,8 @@ def create_mp4():
 		os.path.join(info['basedir'],'mp4',info['objid'] + '.mp4')
 	]
 	subprocess.call(cmd)
-	with open("os.path.join(info['basedir'],'mp4',info['objid'] + '.mp4'),os.path.join(info['basedir'],'mp4',info['objid'] + '.mp4.md5')","w") as f:
+	cmd = ['openssl','md5',os.path.join(info['basedir'],'mp4',info['objid'] + '.mp4')]
+	with open(os.path.join(info['basedir'],'mp4',info['objid'] + '.mp4.md5'),"w") as f:
 		subprocess.call(cmd,stdout=f)
 
 def process_date(datestr):
@@ -156,10 +156,10 @@ def write_mods():
 def inquisition(writedir):
 	global info
 	info = {}
-	info['title'] = click.prompt(click.style("Please enter DVD title",fg='green'))
-	info['date'] = click.prompt(click.style("Please enter date",fg='green'))
+	info['title'] = click.prompt(click.style("Please enter DVD title",fg='green'),default="10th William Kennedy Piping Festival: Uilleann Pipes Recital")
+	info['date'] = click.prompt(click.style("Please enter date",fg='green'),default="23 November 2003")
 	info['performers'] = click.prompt(click.style("Please performers",fg='green'),default='[various performers]')
-	info['refno'] = click.prompt(click.style("Please enter REFNO",fg='green'))
+	info['refno'] = click.prompt(click.style("Please enter REFNO",fg='green'),default='203-ITMA-DVD')
 	info['objid'] = info['refno'].replace('-','').lower()
 	info['writedir'] = writedir
 	info['basedir'] = os.path.join(info['writedir'],info['objid'])
@@ -174,14 +174,14 @@ def inquisition(writedir):
 @click.option('--rescue',default=False,help="Create .iso using ddrescue otherwise use dd. dd will be faster but ddrescue will help with errors.")
 def run(writedir,rescue):
 	inquisition(writedir)
-	create_structure()
-	write_mods()
-	extract_dvd_metadata()
-	create_iso(rescue)
-	extract_iso_metadata()
-	create_dvd_file_list()
-	create_mkv()
-	create_mp4()
+	processes = [create_structure,write_mods,extract_dvd_metadata,create_iso,extract_iso_metadata,create_dvd_file_list,create_mkv,create_mp4]
+	with click.progressbar(processes[-2:]) as bar:
+		for proc in bar:
+			proc()
+
 
 if __name__ == '__main__':
+	click.clear()
+	banner = """#############################################################\n### Irish Traditional Music Archive :: DVD Archiving Tool ###\n#############################################################\n\n"""
+	click.echo(click.style(banner,fg='white'))
 	run()
