@@ -17,14 +17,14 @@ def get_dvd_mount_point():
 def extract_dvd_metadata():
 	global info
 	cmd = ['mediainfo','--Output=XML','-f','--Language=raw',info['mnt_point'],'2>&1']
-	info['dvd_metadata_path'] = os.path.join(info['basepath'],'metadata',info['basepath'] +'.dvd.xml')
+	info['dvd_metadata_path'] = os.path.join(info['basedir'],'metadata',info['basepath'] +'.dvd.xml')
 	with open(info['dvd_metadata_path'], "w") as file:
 		subprocess.call(cmd,stdout=file)
 
 def extract_iso_metadata():
 	global info
 	cmd = ['mediainfo','--Output=XML','-f','--Language=raw',info['iso_path'],'2>&1']
-	info['iso_metadata_path'] = os.path.join(info['basepath'],'metadata',info['basepath'] +'.iso.xml')
+	info['iso_metadata_path'] = os.path.join(info['basedir'],'metadata',info['basepath'] +'.iso.xml')
 	with open(info['iso_metadata_path'], "w") as file:
 		subprocess.call(cmd,stdout=file)
 
@@ -32,25 +32,26 @@ def create_structure():
 	global info
 	if not os.path.exists(info['writedir']):
 		os.mkdir(info['writedir'])
-	if not os.path.exists(info['basepath']):
-		os.mkdir(info['basepath'])
+	if not os.path.exists(info['basedir']):
+		os.mkdir(info['basedir'])
 	else:
 		# improve here
-		os.mkdir(info['basepath']+'disc_2')
-		info['basepath'] = info['basepath']+'disc_2'
+		os.mkdir(info['basedir']+'disc_2')
+		info['basedir'] = info['basedir']+'disc_2'
+		info['basepath'] = os.path.join(info['writedir'],info['basedir'],info['objid'])
 	for fp in ['iso','mkv','mp4','metadata']:
-		os.mkdir(os.path.join(info['basepath'],fp))
+		os.mkdir(os.path.join(info['basedir'],fp))
 
 def create_iso(rescue=False):
 	global info
 	# first unmount disk
 	cmd = ['diskutil','unmountDisk','/dev/disk2']
 	subprocess.call(cmd)
-	info['iso_path'] = os.path.join(info['basepath'],'iso',info['basepath'] +'.iso')
+	info['iso_path'] = os.path.join(info['basedir'],'iso',info['basepath'] +'.iso')
 	if rescue == True:
-		cmd = ['ddrescue','-b2048','-u','-n',info['iso_path'],os.path.join(info['basepath'],'metadata',info['basepath']+'.ddrescue.log')]
+		cmd = ['ddrescue','-b2048','-u','-n',info['iso_path'],os.path.join(info['basedir'],'metadata',info['basepath']+'.ddrescue.log')]
 	else:
-		cmd = ['dd','if=-/dev/disk2','of=%s'%	info['iso_path']]
+		cmd = ['dd','if=/dev/disk2','of=%s'%info['iso_path']]
 	subprocess.call(cmd)
 
 def create_dvd_file_list():
@@ -89,19 +90,19 @@ def create_mkv():
 		'-c:a','copy','-ac','2',
 		'-f','matroska',
 		'-y',
-		os.path.join(info['basepath'],'mkv',info['basepath'] + '.mkv')
+		os.path.join(info['basedir'],'mkv',info['basepath'] + '.mkv')
 	]
 	subprocess.call(cmd)
 
 def create_mp4():
 	global info
 	cmd = ['ffmpeg',
-		'-i',os.path.join(info['basepath'],'mkv',info['basepath'] + '.mkv'),
+		'-i',os.path.join(info['basedir'],'mkv',info['basepath'] + '.mkv'),
 		'-c:v','libx264',
 		'-pix_fmt','yuv420p',
 		'-c:a','copy','-ac','2',
 		'-f','mp4',
-		os.path.join(info['basepath'],'mp4',info['basepath'] + '.mp4')
+		os.path.join(info['basedir'],'mp4',info['basepath'] + '.mp4')
 	]
 	subprocess.call(cmd)
 
@@ -118,7 +119,7 @@ def process_date(datestr):
 
 def write_mods():
 	global info
-	mods_path = info['basepath']+'/metadata/mods.xml'
+	mods_path = info['basedir']+'/metadata/mods.xml'
 	skeleton = """
 		<mods:mods xmlns:mods="http://www.loc.gov/mods/v3">
 			<mods:titleInfo>
@@ -138,7 +139,6 @@ def write_mods():
 	""" % (info['title'],process_date(info['date']),info['refno'],info['performers'],info['technician'],date.today().isoformat())
 	p = etree.XMLParser(remove_blank_text=True)
 	mods_xml = etree.fromstring(skeleton,parser=p)
-	print mods_path
 	etree.ElementTree(mods_xml).write(mods_path,pretty_print=True,encoding='UTF-8')
 
 def inquisition(writedir):
@@ -150,12 +150,12 @@ def inquisition(writedir):
 	info['refno'] = click.prompt(click.style("Please enter REFNO",fg='green'))
 	info['objid'] = info['refno'].replace('-','').lower()
 	info['writedir'] = writedir
-	info['basepath'] = os.path.join(info['writedir'],info['objid'])
+	info['basedir'] = os.path.join(info['writedir'],info['objid'])
+	info['basepath'] = os.path.join(info['writedir'],info['objid'],info['objid'])
 	info['technician'] = click.prompt(click.style("Please enter your own name",fg='green'),default="Piaras Hoban")
 	info['mnt_point'] = get_dvd_mount_point()
 	click.echo(click.style('Information gathered:',fg='blue'))
 	print json.dumps(info,indent=True)
-
 
 @click.command()
 @click.option('--writedir',envvar='WRITEDIR',help="Specify the root directory for output.")
@@ -172,3 +172,4 @@ def run(writedir,rescue):
 	create_mp4()
 if __name__ == '__main__':
 	run()
+s
