@@ -34,8 +34,12 @@ def create_structure():
 		os.mkdir(info['writedir'])
 	if not os.path.exists(info['basepath']):
 		os.mkdir(info['basepath'])
-		for fp in ['iso','mkv','mp4','metadata']:
-			os.mkdir(os.path.join(info['basepath'],fp))
+	else:
+		# improve here
+		os.mkdir(info['basepath']+'disc_2')
+		info['basepath'] = info['basepath']+'disc_2'
+	for fp in ['iso','mkv','mp4','metadata']:
+		os.mkdir(os.path.join(info['basepath'],fp))
 
 def create_iso(rescue=False):
 	global info
