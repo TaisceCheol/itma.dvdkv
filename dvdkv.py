@@ -6,6 +6,7 @@ import click,subprocess,os,json,re,glob
 from lxml import etree
 from datetime import date
 from dateparser import date as ddparse
+
 def get_dvd_mount_point():
 	cmd = ['diskutil','info','/dev/disk2']
 	diskutil = subprocess.Popen(cmd,stdout=subprocess.PIPE)
@@ -172,4 +173,3 @@ def run(writedir,rescue):
 	create_mp4()
 if __name__ == '__main__':
 	run()
-s
